@@ -12,6 +12,7 @@ import adminRouter from "./admin";
 import couponsRouter from "./coupons";
 import chatRouter from "./chat";
 import uploadRouter from "./upload";
+import aiChatRouter from "./ai-chat";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(adminRouter);
 router.use(couponsRouter);
 router.use(chatRouter);
 router.use(uploadRouter);
+router.use(aiChatRouter);
 
 export default router;
