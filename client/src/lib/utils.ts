@@ -5,11 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatPrice(price: number, locale: string = 'ar-SY'): string {
-  return new Intl.NumberFormat(locale, {
+export function formatPrice(price: number, _locale?: string): string {
+  return '$ ' + new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(price) + ' ';
+  }).format(price);
 }
 
 export function formatDate(date: Date | string, locale: string = 'ar'): string {
