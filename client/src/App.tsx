@@ -1,8 +1,8 @@
-import { Switch, Route, Router as WouterRouter, useParams, useLocation } from 'wouter';
+import { Switch, Route, Router as WouterRouter, useLocation } from 'wouter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { LocaleProvider, useLocale } from './context/LocaleContext';
 import { SiteSettingsProvider } from './context/SiteSettingsContext';
 import HomePage from './pages/HomePage';
@@ -33,14 +33,13 @@ import AdminCategories from './pages/admin/AdminCategories';
 import ComparePage from './pages/ComparePage';
 import VerifyOTPPage from './pages/auth/VerifyOTPPage';
 import NotFound from './pages/not-found';
+import AIChatWidget from './components/chat/AIChatWidget';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30000 } },
 });
 
 function AppRoutes() {
-  const { locale, isRTL } = useLocale();
-
   return (
     <Switch>
       <Route path="/" component={HomePage} />
@@ -75,6 +74,18 @@ function AppRoutes() {
   );
 }
 
+function AppWithWidget() {
+  const [location] = useLocation();
+  const isAdminPage = location.startsWith('/admin');
+
+  return (
+    <>
+      <AppRoutes />
+      {!isAdminPage && <AIChatWidget />}
+    </>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -84,7 +95,7 @@ function App() {
             <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
               <AppToaster />
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-                <AppRoutes />
+                <AppWithWidget />
               </WouterRouter>
             </ThemeProvider>
           </AuthProvider>
