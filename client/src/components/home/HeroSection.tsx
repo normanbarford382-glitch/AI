@@ -15,7 +15,7 @@ const defaultSlides = [
     titleEn: 'Discover the World of Laptops',
     subtitleAr: 'أحدث الموديلات بأفضل الأسعار. جودة مضمونة، وشحن سريع إلى باب منزلك.',
     subtitleEn: 'Latest models at the best prices. Guaranteed quality, fast shipping to your door.',
-    image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=1600&q=80',
+    image: 'https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=1600&q=80',
     fromDb: false,
   },
   {
@@ -23,7 +23,7 @@ const defaultSlides = [
     titleEn: 'Wide Range of Accessories',
     subtitleAr: 'كل ما تحتاجه لإكمال تجربتك التقنية في مكان واحد.',
     subtitleEn: 'Everything you need to complete your tech experience in one place.',
-    image: 'https://images.unsplash.com/photo-1593640408182-31c228522b74?w=1600&q=80',
+    image: 'https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=1600&q=80',
     fromDb: false,
   },
   {
@@ -31,7 +31,7 @@ const defaultSlides = [
     titleEn: 'Exclusive Deals You Cannot Miss',
     subtitleAr: 'خصومات كبيرة على أشهر الماركات العالمية. محدود لفترة معينة فقط!',
     subtitleEn: 'Huge discounts on the most popular global brands. Limited time only!',
-    image: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=1600&q=80',
+    image: 'https://images.unsplash.com/photo-1542393545-10f5cde2c810?w=1600&q=80',
     fromDb: false,
   },
 ];
