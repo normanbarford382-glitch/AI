@@ -31,10 +31,10 @@ export default function Footer() {
             </p>
             <div className="flex items-center gap-3">
               {[
-                { icon: Facebook, href: 'https://www.facebook.com/almajd766999', label: 'Facebook' },
-                { icon: Instagram, href: 'https://www.instagram.com/mrkzlmjdlkhdmt?igsh=MXJhZHBzNG02ZzJ2OQ==', label: 'Instagram' },
+ { icon: Facebook, href: 'https://www.facebook.com/profile.php?id=61573755696526', label: 'Facebook' },
+                { icon: Instagram, href: '', label: 'Instagram' },
                 { icon: Twitter, href: '#', label: 'Twitter' },
-                { icon: MessageCircle, href: '#', label: 'WhatsApp' },
+                { icon: MessageCircle, href: 'https://wa.me/963940730418', label: 'WhatsApp' },
               ].map(({ icon: Icon, href, label }) => (
                 <a key={label} href={href} aria-label={label}
                   className="w-9 h-9 bg-card border border-border rounded-xl flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary transition-all duration-200 hover:scale-110">
@@ -81,8 +81,7 @@ export default function Footer() {
               {[
                 { icon: Phone, text: '+963 932497 080' },
                 { icon: Mail, text: 'support@laptopstore.sy' },
-                { icon: MapPin, text: locale === 'ar' ? 'مصياف-شارع الماركات مقابل النافذة الواحدة ' : 'Damascus, Syria' },
-              ].map(({ icon: Icon, text }) => (
+{ icon: MapPin, text: locale === 'ar' ? 'حماه_ساحة العاصي_دخلة حلويات سلورة عبود ' : 'Damascus, Syria' },              ].map(({ icon: Icon, text }) => (
                 <div key={text} className="flex items-center gap-3 text-sm text-muted-foreground">
                   <Icon className="w-4 h-4 text-primary flex-shrink-0" />
                   {text}
