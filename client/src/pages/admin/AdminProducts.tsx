@@ -21,7 +21,7 @@ export default function AdminProducts() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [uploading, setUploading] = useState(false);
   const imgRef = useRef<HTMLInputElement>(null);
@@ -61,7 +61,31 @@ export default function AdminProducts() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const toggleMutation = useMutation({
+  const editMutation = useMutation({
+    mutationFn: () => api.put(`/admin/products/${editingId}`, {
+      nameAr: form.nameAr.trim(),
+      nameEn: form.nameEn.trim(),
+      descriptionAr: form.descriptionAr.trim() || undefined,
+      descriptionEn: form.descriptionEn.trim() || undefined,
+      price: parseFloat(form.price),
+      discountPrice: form.discountPrice ? parseFloat(form.discountPrice) : undefined,
+      stock: parseInt(form.stock) || 0,
+      categoryId: form.categoryId,
+      brand: form.brand.trim() || undefined,
+      isFeatured: form.isFeatured,
+      thumbnail: form.thumbnail || undefined,
+      images: form.thumbnail ? [form.thumbnail] : [],
+    }),
+    onSuccess: () => {
+      toast.success(locale === 'ar' ? 'تم تعديل المنتج بنجاح' : 'Product updated successfully');
+      qc.invalidateQueries({ queryKey: ['admin-products'] });
+      qc.invalidateQueries({ queryKey: ['products'] });
+      setShowModal(false);
+      setEditingId(null);
+      setForm({ ...emptyForm });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       api.put(`/admin/products/${id}`, { isActive }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-products'] }); },
@@ -74,46 +98,7 @@ export default function AdminProducts() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  const editMutation = useMutation({
-    mutationFn: (id: string) => api.put(`/admin/products/${id}`, {
-      nameAr: form.nameAr.trim(),
-      nameEn: form.nameEn.trim(),
-      descriptionAr: form.descriptionAr.trim() || undefined,
-      descriptionEn: form.descriptionEn.trim() || undefined,
-      price: parseFloat(form.price),
-      discountPrice: form.discountPrice ? parseFloat(form.discountPrice) : undefined,
-      stock: parseInt(form.stock) || 0,
-      categoryId: form.categoryId,
-      brand: form.brand.trim() || undefined,
-      isFeatured: form.isFeatured,
-      thumbnail: form.thumbnail || undefined,
-    }),
-    onSuccess: () => {
-      toast.success(locale === 'ar' ? 'تم تعديل المنتج بنجاح' : 'Product updated successfully');
-      qc.invalidateQueries({ queryKey: ['admin-products'] });
-      qc.invalidateQueries({ queryKey: ['products'] });
-      setEditProduct(null);
-      setForm({ ...emptyForm });
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-
-  const openEditModal = (product: Product) => {
-    setEditProduct(product);
-    setForm({
-      nameAr: product.nameAr,
-      nameEn: product.nameEn,
-      descriptionAr: product.descriptionAr || '',
-      descriptionEn: product.descriptionEn || '',
-      price: String(product.price),
-      discountPrice: product.discountPrice ? String(product.discountPrice) : '',
-      stock: String(product.stock),
-      categoryId: product.categoryId || '',
-      brand: product.brand || '',
-      isFeatured: product.isFeatured || false,
-      thumbnail: product.thumbnail || '',
-    });
-  };
+  const handleImageUpload = async (file: File) => {
     setUploading(true);
     try {
       const reader = new FileReader();
@@ -135,6 +120,36 @@ export default function AdminProducts() {
     }
   };
 
+  const openEditModal = (product: Product) => {
+    setEditingId(product.id);
+    setForm({
+      nameAr: product.nameAr || '',
+      nameEn: product.nameEn || '',
+      descriptionAr: product.descriptionAr || '',
+      descriptionEn: product.descriptionEn || '',
+      price: product.price != null ? String(product.price) : '',
+      discountPrice: product.discountPrice != null ? String(product.discountPrice) : '',
+      stock: product.stock != null ? String(product.stock) : '0',
+      categoryId: product.categoryId || '',
+      brand: product.brand || '',
+      isFeatured: !!product.isFeatured,
+      thumbnail: product.thumbnail || '',
+    });
+    setShowModal(true);
+  };
+
+  const openAddModal = () => {
+    setEditingId(null);
+    setForm({ ...emptyForm });
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+    setForm({ ...emptyForm });
+  };
+
   const categories = catsData?.categories || [];
   const products = data?.products || [];
   const canSubmit = form.nameAr && form.nameEn && form.price && form.categoryId;
@@ -150,7 +165,7 @@ export default function AdminProducts() {
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">{products.length} {locale === 'ar' ? 'منتج' : 'products'}</span>
             <button
-              onClick={() => setShowModal(true)}
+              onClick={openAddModal}
               className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
             >
               <Plus className="w-4 h-4" />
@@ -172,7 +187,7 @@ export default function AdminProducts() {
             <div className="p-12 text-center text-muted-foreground">
               <Package className="w-12 h-12 mx-auto opacity-30 mb-3" />
               <p>{locale === 'ar' ? 'لا توجد منتجات' : 'No products'}</p>
-              <button onClick={() => setShowModal(true)} className="mt-3 text-primary text-sm hover:underline">
+              <button onClick={openAddModal} className="mt-3 text-primary text-sm hover:underline">
                 {locale === 'ar' ? 'أضف أول منتج' : 'Add first product'}
               </button>
             </div>
@@ -227,7 +242,7 @@ export default function AdminProducts() {
                             {product.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                           <button onClick={() => openEditModal(product)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-50 text-muted-foreground hover:text-blue-500 transition-all">
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent transition-all text-muted-foreground hover:text-primary">
                             <Pencil className="w-4 h-4" />
                           </button>
                           <button onClick={() => { if (confirm(locale === 'ar' ? 'هل أنت متأكد؟' : 'Confirm delete?')) deleteMutation.mutate(product.id); }}
@@ -245,141 +260,12 @@ export default function AdminProducts() {
         </div>
       </div>
 
-      {editProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10">
-              <h2 className="font-bold text-lg">{locale === 'ar' ? 'تعديل المنتج' : 'Edit Product'}</h2>
-              <button onClick={() => { setEditProduct(null); setForm({ ...emptyForm }); }} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">{locale === 'ar' ? 'صورة المنتج' : 'Product Image'}</label>
-                <div className="flex items-center gap-4">
-                  {form.thumbnail ? (
-                    <img src={form.thumbnail} alt="preview" className="w-20 h-20 rounded-xl object-cover border border-border" />
-                  ) : (
-                    <div className="w-20 h-20 rounded-xl bg-muted border border-dashed border-border flex items-center justify-center">
-                      <Package className="w-8 h-8 text-muted-foreground/40" />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <button type="button" onClick={() => imgRef.current?.click()} disabled={uploading}
-                      className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm hover:bg-accent transition-all disabled:opacity-50">
-                      {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                      {uploading ? (locale === 'ar' ? 'جاري الرفع...' : 'Uploading...') : (locale === 'ar' ? 'رفع صورة' : 'Upload Image')}
-                    </button>
-                    <input ref={imgRef} type="file" accept="image/*" className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }} />
-                    {form.thumbnail && (
-                      <button onClick={() => setForm(p => ({ ...p, thumbnail: '' }))} className="mt-1.5 text-xs text-red-500 hover:underline block">
-                        {locale === 'ar' ? 'إزالة الصورة' : 'Remove image'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">{locale === 'ar' ? 'الاسم بالعربي *' : 'Name (Arabic) *'}</label>
-                  <input value={form.nameAr} onChange={e => setForm(p => ({ ...p, nameAr: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Name (English) *</label>
-                  <input value={form.nameEn} onChange={e => setForm(p => ({ ...p, nameEn: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">{locale === 'ar' ? 'الفئة *' : 'Category *'}</label>
-                  <select value={form.categoryId} onChange={e => setForm(p => ({ ...p, categoryId: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
-                    <option value="">{locale === 'ar' ? '-- اختر الفئة --' : '-- Select Category --'}</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{locale === 'ar' ? cat.nameAr : cat.nameEn}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">{locale === 'ar' ? 'الماركة' : 'Brand'}</label>
-                  <input value={form.brand} onChange={e => setForm(p => ({ ...p, brand: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">{locale === 'ar' ? 'السعر *' : 'Price *'}</label>
-                  <input type="number" min="0" value={form.price} onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">{locale === 'ar' ? 'سعر الخصم' : 'Discount Price'}</label>
-                  <input type="number" min="0" value={form.discountPrice} onChange={e => setForm(p => ({ ...p, discountPrice: e.target.value }))}
-                    placeholder={locale === 'ar' ? 'اختياري' : 'Optional'}
-                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">{locale === 'ar' ? 'المخزون' : 'Stock'}</label>
-                  <input type="number" min="0" value={form.stock} onChange={e => setForm(p => ({ ...p, stock: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">{locale === 'ar' ? 'الوصف بالعربي' : 'Description (Arabic)'}</label>
-                <textarea value={form.descriptionAr} onChange={e => setForm(p => ({ ...p, descriptionAr: e.target.value }))} rows={2}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Description (English)</label>
-                <textarea value={form.descriptionEn} onChange={e => setForm(p => ({ ...p, descriptionEn: e.target.value }))} rows={2}
-                  className="w-full px-3 py-2.5 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" />
-              </div>
-
-              <div className="flex items-center gap-3 py-2">
-                <button type="button" onClick={() => setForm(p => ({ ...p, isFeatured: !p.isFeatured }))}
-                  className={cn('w-11 h-6 rounded-full transition-colors relative flex-shrink-0', form.isFeatured ? 'bg-primary' : 'bg-muted')}>
-                  <div className={cn('absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all', form.isFeatured ? 'left-[calc(100%-22px)]' : 'left-0.5')} />
-                </button>
-                <div className="flex items-center gap-2">
-                  <Star className="w-4 h-4 text-amber-500" />
-                  <span className="text-sm font-medium">{locale === 'ar' ? 'منتج مميز (يظهر في الصفحة الرئيسية)' : 'Featured (shown on homepage)'}</span>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => editMutation.mutate(editProduct.id)}
-                  disabled={!form.nameAr || !form.nameEn || !form.price || editMutation.isPending || uploading}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all disabled:opacity-60"
-                >
-                  {editMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
-                  {editMutation.isPending ? (locale === 'ar' ? 'جاري الحفظ...' : 'Saving...') : (locale === 'ar' ? 'حفظ التعديلات' : 'Save Changes')}
-                </button>
-                <button onClick={() => { setEditProduct(null); setForm({ ...emptyForm }); }} className="px-5 py-3 border border-border rounded-xl text-sm hover:bg-accent transition-all">
-                  {locale === 'ar' ? 'إلغاء' : 'Cancel'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10">
-              <h2 className="font-bold text-lg">{locale === 'ar' ? 'إضافة منتج جديد' : 'Add New Product'}</h2>
-              <button onClick={() => setShowModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent">
+              <h2 className="font-bold text-lg">{editingId ? (locale === 'ar' ? 'تعديل المنتج' : 'Edit Product') : (locale === 'ar' ? 'إضافة منتج جديد' : 'Add New Product')}</h2>
+              <button onClick={closeModal} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -494,14 +380,16 @@ export default function AdminProducts() {
 
               <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => addMutation.mutate()}
-                  disabled={!canSubmit || addMutation.isPending || uploading}
+                  onClick={() => editingId ? editMutation.mutate() : addMutation.mutate()}
+                  disabled={!canSubmit || addMutation.isPending || editMutation.isPending || uploading}
                   className="flex-1 flex items-center justify-center gap-2 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-all disabled:opacity-60"
                 >
-                  {addMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                  {addMutation.isPending ? (locale === 'ar' ? 'جاري الإضافة...' : 'Adding...') : (locale === 'ar' ? 'إضافة المنتج' : 'Add Product')}
+                  {(addMutation.isPending || editMutation.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : editingId ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                  {editingId
+                    ? (editMutation.isPending ? (locale === 'ar' ? 'جاري الحفظ...' : 'Saving...') : (locale === 'ar' ? 'حفظ التعديلات' : 'Save Changes'))
+                    : (addMutation.isPending ? (locale === 'ar' ? 'جاري الإضافة...' : 'Adding...') : (locale === 'ar' ? 'إضافة المنتج' : 'Add Product'))}
                 </button>
-                <button onClick={() => setShowModal(false)} className="px-5 py-3 border border-border rounded-xl text-sm hover:bg-accent transition-all">
+                <button onClick={closeModal} className="px-5 py-3 border border-border rounded-xl text-sm hover:bg-accent transition-all">
                   {locale === 'ar' ? 'إلغاء' : 'Cancel'}
                 </button>
               </div>
