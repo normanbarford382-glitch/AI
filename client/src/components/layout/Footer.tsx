@@ -79,13 +79,20 @@ export default function Footer() {
             <h4 className="font-bold text-foreground">{locale === 'ar' ? 'تواصل معنا' : 'Contact Us'}</h4>
             <div className="space-y-3">
               {[
-                { icon: Phone, text: '+963 932497 080' },
-                { icon: Mail, text: 'support@laptopstore.sy' },
-{ icon: MapPin, text: locale === 'ar' ? 'حماه_ساحة العاصي_دخلة حلويات سلورة عبود ' : 'Damascus, Syria' },              ].map(({ icon: Icon, text }) => (
-                <div key={text} className="flex items-center gap-3 text-sm text-muted-foreground">
-                  <Icon className="w-4 h-4 text-primary flex-shrink-0" />
-                  {text}
-                </div>
+                { icon: Phone, text: '+963 940 730 418', href: 'tel:+963940730418' },
+                { icon: Mail, text: 'dubailaptop567@gmail.com', href: 'mailto:dubailaptop567@gmail.com' },
+{ icon: MapPin, text: locale === 'ar' ? 'حماه_ساحة العاصي_دخلة حلويات سلورة عبود ' : 'Damascus, Syria' },              ].map(({ icon: Icon, text, href }) => (
+                href ? (
+                  <a key={text} href={href} className="flex items-center gap-3 text-sm text-muted-foreground hover:text-primary transition-colors">
+                    <Icon className="w-4 h-4 text-primary flex-shrink-0" />
+                    {text}
+                  </a>
+                ) : (
+                  <div key={text} className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <Icon className="w-4 h-4 text-primary flex-shrink-0" />
+                    {text}
+                  </div>
+                )
               ))}
             </div>
           </div>
