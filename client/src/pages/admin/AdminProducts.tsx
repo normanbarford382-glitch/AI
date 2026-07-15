@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, Plus, Trash2, Eye, EyeOff, X, Upload, Loader2, Star, Pencil } from 'lucide-react';
+import { Package, Plus, Trash2, Eye, EyeOff, X, Loader2, Star, Pencil, ImagePlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AdminLayout from './AdminLayout';
 import { useLocale } from '../../context/LocaleContext';
@@ -13,7 +13,7 @@ interface Category { id: string; nameAr: string; nameEn: string; }
 const emptyForm = {
   nameAr: '', nameEn: '', descriptionAr: '', descriptionEn: '',
   price: '', discountPrice: '', stock: '0', categoryId: '',
-  brand: '', isFeatured: false, thumbnail: '',
+  brand: '', isFeatured: false, thumbnail: '', images: [] as string[],
 };
 
 type FormState = typeof emptyForm;
@@ -55,8 +55,8 @@ export default function AdminProducts() {
       categoryId: form.categoryId,
       brand: form.brand.trim() || undefined,
       isFeatured: form.isFeatured,
-      thumbnail: form.thumbnail || undefined,
-      images: form.thumbnail ? [form.thumbnail] : [],
+      thumbnail: form.thumbnail || (form.images[0] ?? undefined),
+      images: form.images.length ? form.images : (form.thumbnail ? [form.thumbnail] : []),
     }),
     onSuccess: () => {
       toast.success(locale === 'ar' ? 'تم إضافة المنتج بنجاح' : 'Product added successfully');
@@ -80,8 +80,8 @@ export default function AdminProducts() {
       categoryId: editForm.categoryId,
       brand: editForm.brand.trim() || undefined,
       isFeatured: editForm.isFeatured,
-      thumbnail: editForm.thumbnail || undefined,
-      images: editForm.thumbnail ? [editForm.thumbnail] : [],
+      thumbnail: editForm.thumbnail || (editForm.images[0] ?? undefined),
+      images: editForm.images.length ? editForm.images : (editForm.thumbnail ? [editForm.thumbnail] : []),
     }),
     onSuccess: () => {
       toast.success(locale === 'ar' ? 'تم حفظ التعديلات بنجاح' : 'Product updated successfully');
@@ -113,8 +113,17 @@ export default function AdminProducts() {
         try {
           const base64 = e.target?.result as string;
           const res = await api.post<{ url: string }>('/upload', { base64, folder: 'laptopstore/products' });
-          if (isEdit) setEditForm(p => ({ ...p, thumbnail: res.url }));
-          else setForm(p => ({ ...p, thumbnail: res.url }));
+          if (isEdit) {
+            setEditForm(p => {
+              const imgs = [...p.images, res.url];
+              return { ...p, images: imgs, thumbnail: p.thumbnail || imgs[0] };
+            });
+          } else {
+            setForm(p => {
+              const imgs = [...p.images, res.url];
+              return { ...p, images: imgs, thumbnail: p.thumbnail || imgs[0] };
+            });
+          }
           toast.success(locale === 'ar' ? 'تم رفع الصورة' : 'Image uploaded');
         } catch (err: unknown) {
           toast.error((err as Error).message || (locale === 'ar' ? 'فشل رفع الصورة' : 'Upload failed'));
@@ -125,6 +134,44 @@ export default function AdminProducts() {
       reader.readAsDataURL(file);
     } catch {
       if (isEdit) setEditUploading(false); else setUploading(false);
+    }
+  };
+
+  const handleMultiImageUpload = async (files: FileList, isEdit = false) => {
+    for (const file of Array.from(files)) {
+      await handleImageUpload(file, isEdit);
+    }
+  };
+
+  const removeImage = (index: number, isEdit = false) => {
+    if (isEdit) {
+      setEditForm(p => {
+        const imgs = p.images.filter((_, i) => i !== index);
+        return { ...p, images: imgs, thumbnail: imgs[0] || '' };
+      });
+    } else {
+      setForm(p => {
+        const imgs = p.images.filter((_, i) => i !== index);
+        return { ...p, images: imgs, thumbnail: imgs[0] || '' };
+      });
+    }
+  };
+
+  const setPrimaryImage = (index: number, isEdit = false) => {
+    if (isEdit) {
+      setEditForm(p => {
+        const imgs = [...p.images];
+        const [img] = imgs.splice(index, 1);
+        imgs.unshift(img);
+        return { ...p, images: imgs, thumbnail: imgs[0] };
+      });
+    } else {
+      setForm(p => {
+        const imgs = [...p.images];
+        const [img] = imgs.splice(index, 1);
+        imgs.unshift(img);
+        return { ...p, images: imgs, thumbnail: imgs[0] };
+      });
     }
   };
 
@@ -142,6 +189,7 @@ export default function AdminProducts() {
       brand: product.brand || '',
       isFeatured: product.isFeatured ?? false,
       thumbnail: product.thumbnail || '',
+      images: Array.isArray(product.images) ? product.images : (product.thumbnail ? [product.thumbnail] : []),
     });
   };
 
@@ -272,34 +320,41 @@ export default function AdminProducts() {
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">{locale === 'ar' ? 'صورة المنتج' : 'Product Image'}</label>
-                <div className="flex items-center gap-4">
-                  {form.thumbnail ? (
-                    <img src={form.thumbnail} alt="preview" className="w-20 h-20 rounded-xl object-cover border border-border" />
-                  ) : (
-                    <div className="w-20 h-20 rounded-xl bg-muted border border-dashed border-border flex items-center justify-center">
-                      <Package className="w-8 h-8 text-muted-foreground/40" />
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">{locale === 'ar' ? 'صور المنتج (يمكن رفع أكثر من صورة)' : 'Product Images (multiple allowed)'}</label>
+                <div className="flex flex-wrap gap-3">
+                  {form.images.map((img, i) => (
+                    <div key={i} className="relative group w-24 h-24 rounded-xl overflow-hidden border border-border bg-muted">
+                      <img src={img} alt={`product-${i}`} className="w-full h-full object-cover" />
+                      {i === 0 && <span className="absolute top-1 start-1 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-bold">{locale === 'ar' ? 'رئيسية' : 'Main'}</span>}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                        {i !== 0 && (
+                          <button type="button" onClick={() => setPrimaryImage(i, false)} title={locale === 'ar' ? 'جعلها رئيسية' : 'Set as main'}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/20 text-white hover:bg-white/30">
+                            <Star className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button type="button" onClick={() => removeImage(i, false)} title={locale === 'ar' ? 'حذف' : 'Remove'}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/20 text-white hover:bg-red-500">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                  )}
-                  <div className="flex-1">
-                    <button
-                      type="button"
-                      onClick={() => imgRef.current?.click()}
-                      disabled={uploading}
-                      className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm hover:bg-accent transition-all disabled:opacity-50"
-                    >
-                      {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                      {uploading ? (locale === 'ar' ? 'جاري الرفع...' : 'Uploading...') : (locale === 'ar' ? 'رفع صورة' : 'Upload Image')}
-                    </button>
-                    <input ref={imgRef} type="file" accept="image/*" className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f, false); }} />
-                    {form.thumbnail && (
-                      <button onClick={() => setForm(p => ({ ...p, thumbnail: '' }))} className="mt-1.5 text-xs text-red-500 hover:underline block">
-                        {locale === 'ar' ? 'إزالة الصورة' : 'Remove image'}
-                      </button>
-                    )}
-                  </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => imgRef.current?.click()}
+                    disabled={uploading}
+                    className="w-24 h-24 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-accent/50 transition-all flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary disabled:opacity-50"
+                  >
+                    {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImagePlus className="w-5 h-5" />}
+                    <span className="text-[10px] font-medium">{locale === 'ar' ? 'إضافة صورة' : 'Add image'}</span>
+                  </button>
+                  <input ref={imgRef} type="file" accept="image/*" multiple className="hidden"
+                    onChange={e => { const fs = e.target.files; if (fs && fs.length) handleMultiImageUpload(fs, false); e.target.value = ''; }} />
                 </div>
+                {form.images.length === 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">{locale === 'ar' ? 'أول صورة ستظهر كصورة رئيسية في المتجر، وباقي الصور تظهر في صفحة تفاصيل المنتج.' : 'First image is shown as thumbnail in store; all images appear in product details.'}</p>
+                )}
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
@@ -412,34 +467,41 @@ export default function AdminProducts() {
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-2 block">{locale === 'ar' ? 'صورة المنتج' : 'Product Image'}</label>
-                <div className="flex items-center gap-4">
-                  {editForm.thumbnail ? (
-                    <img src={editForm.thumbnail} alt="preview" className="w-20 h-20 rounded-xl object-cover border border-border" />
-                  ) : (
-                    <div className="w-20 h-20 rounded-xl bg-muted border border-dashed border-border flex items-center justify-center">
-                      <Package className="w-8 h-8 text-muted-foreground/40" />
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">{locale === 'ar' ? 'صور المنتج (يمكن رفع أكثر من صورة)' : 'Product Images (multiple allowed)'}</label>
+                <div className="flex flex-wrap gap-3">
+                  {editForm.images.map((img, i) => (
+                    <div key={i} className="relative group w-24 h-24 rounded-xl overflow-hidden border border-border bg-muted">
+                      <img src={img} alt={`product-${i}`} className="w-full h-full object-cover" />
+                      {i === 0 && <span className="absolute top-1 start-1 text-[10px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-bold">{locale === 'ar' ? 'رئيسية' : 'Main'}</span>}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                        {i !== 0 && (
+                          <button type="button" onClick={() => setPrimaryImage(i, true)} title={locale === 'ar' ? 'جعلها رئيسية' : 'Set as main'}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/20 text-white hover:bg-white/30">
+                            <Star className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button type="button" onClick={() => removeImage(i, true)} title={locale === 'ar' ? 'حذف' : 'Remove'}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/20 text-white hover:bg-red-500">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                  )}
-                  <div className="flex-1">
-                    <button
-                      type="button"
-                      onClick={() => editImgRef.current?.click()}
-                      disabled={editUploading}
-                      className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm hover:bg-accent transition-all disabled:opacity-50"
-                    >
-                      {editUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                      {editUploading ? (locale === 'ar' ? 'جاري الرفع...' : 'Uploading...') : (locale === 'ar' ? 'تغيير الصورة' : 'Change Image')}
-                    </button>
-                    <input ref={editImgRef} type="file" accept="image/*" className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f, true); }} />
-                    {editForm.thumbnail && (
-                      <button onClick={() => setEditForm(p => ({ ...p, thumbnail: '' }))} className="mt-1.5 text-xs text-red-500 hover:underline block">
-                        {locale === 'ar' ? 'إزالة الصورة' : 'Remove image'}
-                      </button>
-                    )}
-                  </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => editImgRef.current?.click()}
+                    disabled={editUploading}
+                    className="w-24 h-24 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-accent/50 transition-all flex flex-col items-center justify-center gap-1 text-muted-foreground hover:text-primary disabled:opacity-50"
+                  >
+                    {editUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImagePlus className="w-5 h-5" />}
+                    <span className="text-[10px] font-medium">{locale === 'ar' ? 'إضافة صورة' : 'Add image'}</span>
+                  </button>
+                  <input ref={editImgRef} type="file" accept="image/*" multiple className="hidden"
+                    onChange={e => { const fs = e.target.files; if (fs && fs.length) handleMultiImageUpload(fs, true); e.target.value = ''; }} />
                 </div>
+                {editForm.images.length === 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">{locale === 'ar' ? 'أول صورة ستظهر كصورة رئيسية في المتجر، وباقي الصور تظهر في صفحة تفاصيل المنتج.' : 'First image is shown as thumbnail in store; all images appear in product details.'}</p>
+                )}
               </div>
 
               <div className="grid sm:grid-cols-2 gap-4">

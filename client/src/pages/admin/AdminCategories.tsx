@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { FolderOpen, Plus, Trash2, Eye, EyeOff, Loader2, X } from 'lucide-react';
+import { FolderOpen, Plus, Trash2, Eye, EyeOff, Loader2, X, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AdminLayout from './AdminLayout';
 import { useLocale } from '../../context/LocaleContext';
@@ -22,6 +22,8 @@ export default function AdminCategories() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ nameAr: '', nameEn: '' });
+  const [editCat, setEditCat] = useState<Category | null>(null);
+  const [editForm, setEditForm] = useState({ nameAr: '', nameEn: '' });
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-categories'],
@@ -62,6 +64,23 @@ export default function AdminCategories() {
     },
     onError: (err: Error) => toast.error(err.message),
   });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, nameAr, nameEn }: { id: string; nameAr: string; nameEn: string }) =>
+      api.put(`/categories/${id}`, { nameAr, nameEn }),
+    onSuccess: () => {
+      toast.success(locale === 'ar' ? 'تم تحديث الفئة' : 'Category updated');
+      qc.invalidateQueries({ queryKey: ['admin-categories'] });
+      qc.invalidateQueries({ queryKey: ['categories'] });
+      setEditCat(null);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const openEdit = (cat: Category) => {
+    setEditCat(cat);
+    setEditForm({ nameAr: cat.nameAr, nameEn: cat.nameEn });
+  };
 
   const categories = data?.categories || [];
 
@@ -166,6 +185,13 @@ export default function AdminCategories() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <button
+                            onClick={() => openEdit(cat)}
+                            title={locale === 'ar' ? 'تعديل الفئة' : 'Edit category'}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent transition-all text-muted-foreground hover:text-primary"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => toggleMutation.mutate({ id: cat.id, isActive: !cat.isActive })}
                             disabled={toggleMutation.isPending}
                             title={cat.isActive ? (locale === 'ar' ? 'إخفاء' : 'Hide') : (locale === 'ar' ? 'إظهار' : 'Show')}
@@ -190,6 +216,55 @@ export default function AdminCategories() {
           )}
         </div>
       </div>
+
+      {editCat && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setEditCat(null)}>
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-lg">{locale === 'ar' ? 'تعديل الفئة' : 'Edit Category'}</h2>
+              <button onClick={() => setEditCat(null)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-accent transition-all">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{locale === 'ar' ? 'الاسم بالعربية' : 'Arabic Name'}</label>
+                <input
+                  value={editForm.nameAr}
+                  onChange={e => setEditForm(p => ({ ...p, nameAr: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder={locale === 'ar' ? 'اسم الفئة بالعربية' : 'Category name in Arabic'}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{locale === 'ar' ? 'الاسم بالإنجليزية' : 'English Name'}</label>
+                <input
+                  value={editForm.nameEn}
+                  onChange={e => setEditForm(p => ({ ...p, nameEn: e.target.value }))}
+                  className="w-full px-4 py-2.5 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder={locale === 'ar' ? 'اسم الفئة بالإنجليزية' : 'Category name in English'}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEditCat(null)}
+                className="flex-1 py-2.5 border border-border rounded-xl text-sm font-semibold hover:bg-accent transition-all"
+              >
+                {locale === 'ar' ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                onClick={() => updateMutation.mutate({ id: editCat.id, ...editForm })}
+                disabled={!editForm.nameAr.trim() || !editForm.nameEn.trim() || updateMutation.isPending}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-50"
+              >
+                {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
+                {locale === 'ar' ? 'حفظ' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
