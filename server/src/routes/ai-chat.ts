@@ -27,11 +27,11 @@ function extractBudget(message: string): { min?: number; max?: number } {
   return {};
 }
 
-async function findRelevantProducts(message: string, limit = 6) {
+async function findRelevantProducts(message: string, limit = 100) {
   const lowerMsg = message.toLowerCase();
   const budget = extractBudget(message);
 
-  const baseConditions = [eq(products.isActive, true), gt(products.stock, 0)];
+  const baseConditions = [eq(products.isActive, true)];
   if (budget.max) baseConditions.push(lte(products.price, budget.max));
   if (budget.min) baseConditions.push(gte(products.price, budget.min));
 
@@ -81,6 +81,17 @@ async function findRelevantProducts(message: string, limit = 6) {
 
     const existingIds = new Set(rows.map((r: any) => r.products.id));
     for (const r of fallback) {
+      if (!existingIds.has(r.products.id)) rows.push(r);
+      if (rows.length >= limit) break;
+    }
+  } else if (rows.length < limit) {
+    const extra = await db.select().from(products)
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .where(and(...baseConditions))
+      .limit(limit);
+
+    const existingIds = new Set(rows.map((r: any) => r.products.id));
+    for (const r of extra) {
       if (!existingIds.has(r.products.id)) rows.push(r);
       if (rows.length >= limit) break;
     }
